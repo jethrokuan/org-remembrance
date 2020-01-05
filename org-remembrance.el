@@ -29,6 +29,9 @@
 (defvar org-remembrance-reload-timer nil
   "Timer for autoreload.")
 
+(defvar org-remembrance-query nil
+  "Current query for org-remembrance.")
+
 (defvar org-remembrance-mode-map
   (let ((kmap (make-sparse-keymap)))
     (define-key kmap (kbd "n") 'org-next-link)
@@ -106,7 +109,8 @@
                     (org-remembrance-get-window)
                     "")))
   (when query
-    (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query))))
+    (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query)))))
+  (unless (s-equals? org-remembrance-query query)
     (with-current-buffer (get-buffer-create org-remembrance-buffer)
       (read-only-mode -1)
       (erase-buffer)
@@ -119,7 +123,9 @@
         (if results
             (progn
               (insert (s-join "\n" (-map #'org-remembrance-format-result results)))
-              (highlight-phrase query 'hi-yellow))
+              (-map (lambda (phrase)
+                      (highlight-phrase phrase 'bold-italic)
+                      ) (s-split " " query)))
           (insert "No results")))
       (read-only-mode +1))))
 

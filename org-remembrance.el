@@ -6,6 +6,11 @@
   :group 'org
   :prefix "org-remembrance-")
 
+(defcustom org-remembrance-idle-delay 3
+  "Delay before updating results."
+  :group 'org-remembrance
+  :type 'integer)
+
 (defcustom org-remembrance-max-results 5
   "This is the number of results to be displayed per page."
   :group 'org-remembrance
@@ -15,6 +20,9 @@
   "This is the buffer name for org-remembrance."
   :group 'org-remembrance
   :type 'string)
+
+(defvar org-remembrance-reload-timer nil
+  "Timer for autoreload.")
 
 (defvar org-remembrance-mode-map
   (let ((kmap (make-sparse-keymap)))
@@ -42,7 +50,6 @@
 (defun org-remembrance-get-results (query)
   (with-temp-buffer
     (let ((command (format "recoll -o -t -N -F \"\" -n %i '%s' 2> /dev/null" org-remembrance-max-results query)))
-      (message command)
       (insert (string-trim (shell-command-to-string command))))
     (goto-char (point-min))
     (kill-line 2)
@@ -83,20 +90,38 @@
   (unless query
     (setq query (or (when (use-region-p)
                       (buffer-substring (region-beginning) (region-end)))
-                    (sentence-at-point))))
-  (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query))))
-  (with-current-buffer (get-buffer-create org-remembrance-buffer)
-    (read-only-mode -1)
-    (erase-buffer)
-    (org-mode)
-    (make-local-variable 'org-return-follows-link)
-    (setq org-return-follows-link t)
-    (org-remembrance-mode +1)
-    (insert (format "Query: %s\n\n" query))
-    (let ((results (org-remembrance-get-results query)))
-      (if results
-          (progn
-            (insert (s-join "\n" (-map #'org-remembrance-format-result results)))
-            (highlight-phrase query 'hi-yellow))
-        (insert "No results")))
-    (read-only-mode +1)))
+                    (sentence-at-point)
+                    "")))
+  (when query
+    (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query))))
+    (with-current-buffer (get-buffer-create org-remembrance-buffer)
+      (read-only-mode -1)
+      (erase-buffer)
+      (org-mode)
+      (make-local-variable 'org-return-follows-link)
+      (setq org-return-follows-link t)
+      (org-remembrance-mode +1)
+      (insert (format "Query: %s\n\n" query))
+      (let ((results (org-remembrance-get-results query)))
+        (if results
+            (progn
+              (insert (s-join "\n" (-map #'org-remembrance-format-result results)))
+              (highlight-phrase query 'hi-yellow))
+          (insert "No results")))
+      (read-only-mode +1))))
+
+;;;###autoload
+(defun org-remembrance-autoreload ()
+  (interactive)
+  (setq org-remembrance-reload-timer (run-with-idle-timer org-remembrance-idle-delay t
+                                                          (lambda ()
+                                                            (when (and (eq major-mode 'org-mode)
+                                                                       (get-buffer-window org-remembrance-buffer))
+                                                              (org-remembrance-update-results))))))
+
+;;;###autoload
+(defun org-remembrance-autoreload-cancel ()
+  (interactive)
+  (when org-remembrance-reload-timer
+    (cancel-timer org-remembrance-reload-timer)
+    (setq org-remembrance-reload-timer nil)))

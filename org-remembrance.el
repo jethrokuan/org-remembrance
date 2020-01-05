@@ -6,6 +6,11 @@
   :group 'org
   :prefix "org-remembrance-")
 
+(defcustom org-remembrance-exact-max-length 3
+  "Maximum length for exact match search."
+  :group 'org-remembrance
+  :type 'integer)
+
 (defcustom org-remembrance-window-size 3
   "Sliding window size for query."
   :group 'org-remembrance
@@ -57,7 +62,12 @@
 
 (defun org-remembrance-get-results (query)
   (with-temp-buffer
-    (let ((command (format "recoll -o -t -N -F \"\" -n %i '%s' 2> /dev/null" org-remembrance-max-results query)))
+
+    (let ((command (concat "recoll "
+                           (if (< (length (s-split " " query)) org-remembrance-exact-max-length)
+                               ""
+                             "-o ")
+                           (format "-t -N -F \"\" -n %i '%s' 2> /dev/null" org-remembrance-max-results query))))
       (insert (string-trim (shell-command-to-string command))))
     (goto-char (point-min))
     (kill-line 2)

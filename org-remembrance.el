@@ -38,9 +38,12 @@
     (setq query (org-remembrance-completing-read)))
   (org-remembrance-update-results query))
 
+
 (defun org-remembrance-get-results (query)
   (with-temp-buffer
-    (insert (string-trim (shell-command-to-string (concat "recoll -o -t -N -F \"url abstract filename\" '" query "' 2> /dev/null"))))
+    (let ((command (format "recoll -o -t -N -F \"\" -n %i '%s' 2> /dev/null" org-remembrance-max-results query)))
+      (message command)
+      (insert (string-trim (shell-command-to-string command))))
     (goto-char (point-min))
     (kill-line 2)
     (if (= (buffer-size (current-buffer)) 0)
@@ -57,18 +60,31 @@
             (s-lines (buffer-string))))))
 
 (defun org-remembrance-format-result (result)
-  (concat (format "* [[%s][%s]]"
+  (concat (format "* [[%s][%s]] %s"
                   (cdr (assoc "url" result))
-                  (cdr (assoc "filename" result)))
+                  (or (cdr (assoc "filename" result))
+                      (cdr (assoc "title" result)))
+                  (cdr (assoc "relevancyrating" result)))
           "\n\n"
-          (s-collapse-whitespace (cdr (assoc "abstract" result)))
+          (s-collapse-whitespace (or (cdr (assoc "abstract" result)) "No abstract."))
           "\n"))
+
+(defun org-remembrance-split-and-focus ()
+  (interactive)
+  "Split window and focus the remembrance results window after an original search."
+  (when (= (length (window-list)) 1)
+    (split-window-right))
+  (other-window 1)
+  (switch-to-buffer org-remembrance-buffer))
 
 ;;;###autoload
 (defun org-remembrance-update-results (&optional query)
   (interactive)
   (unless query
-    (setq query (sentence-at-point)))
+    (setq query (or (when (use-region-p)
+                      (buffer-substring (region-beginning) (region-end)))
+                    (sentence-at-point))))
+  (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query))))
   (with-current-buffer (get-buffer-create org-remembrance-buffer)
     (read-only-mode -1)
     (erase-buffer)
@@ -76,6 +92,7 @@
     (make-local-variable 'org-return-follows-link)
     (setq org-return-follows-link t)
     (org-remembrance-mode +1)
+    (insert (format "Query: %s\n\n" query))
     (let ((results (org-remembrance-get-results query)))
       (if results
           (progn

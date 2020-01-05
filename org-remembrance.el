@@ -6,6 +6,11 @@
   :group 'org
   :prefix "org-remembrance-")
 
+(defcustom org-remembrance-window-size 3
+  "Sliding window size for query."
+  :group 'org-remembrance
+  :type 'integer)
+
 (defcustom org-remembrance-idle-delay 3
   "Delay before updating results."
   :group 'org-remembrance
@@ -84,13 +89,21 @@
   (other-window 1)
   (switch-to-buffer org-remembrance-buffer))
 
+(defun org-remembrance-get-window ()
+  (save-excursion
+    (backward-word org-remembrance-window-size)
+    (setq start (point))
+    (forward-word (+ 1 (* 2 org-remembrance-window-size)))
+    (setq end (point))
+    (buffer-substring-no-properties start end)))
+
 ;;;###autoload
 (defun org-remembrance-update-results (&optional query)
   (interactive)
   (unless query
     (setq query (or (when (use-region-p)
                       (buffer-substring (region-beginning) (region-end)))
-                    (sentence-at-point)
+                    (org-remembrance-get-window)
                     "")))
   (when query
     (setq query (s-downcase (s-replace "'" "\\'" (s-collapse-whitespace query))))

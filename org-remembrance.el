@@ -62,12 +62,13 @@
 
 (defun org-remembrance-get-results (query)
   (with-temp-buffer
-
-    (let ((command (concat "recoll "
-                           (if (< (length (s-split " " query)) org-remembrance-exact-max-length)
-                               ""
-                             "-o ")
-                           (format "-t -N -F \"\" -n %i '%s' 2> /dev/null" org-remembrance-max-results query))))
+    (let ((command (concat "recoll -o "
+                           (format "-t -N -F \"\" -n %i '%s' 2> /dev/null"
+                                   org-remembrance-max-results
+                                   (if (< (length (s-split " " query)) org-remembrance-exact-max-length)
+                                       (concat "\"" query "\"")
+                                     query)
+                                   ))))
       (insert (string-trim (shell-command-to-string command))))
     (goto-char (point-min))
     (kill-line 2)
@@ -94,13 +95,14 @@
           (s-collapse-whitespace (or (cdr (assoc "abstract" result)) "No abstract."))
           "\n"))
 
-(defun org-remembrance-split-and-focus ()
+(defun org-remembrance-split ()
   (interactive)
   "Split window and focus the remembrance results window after an original search."
   (when (= (length (window-list)) 1)
     (split-window-right))
   (other-window 1)
-  (switch-to-buffer org-remembrance-buffer))
+  (switch-to-buffer org-remembrance-buffer)
+  (other-window -1))
 
 (defun org-remembrance-get-window ()
   (save-excursion
@@ -113,6 +115,9 @@
 ;;;###autoload
 (defun org-remembrance-update-results (&optional query)
   (interactive)
+  (get-buffer-create org-remembrance-buffer)
+  (unless (get-buffer-window org-remembrance-buffer)
+    (org-remembrance-split))
   (unless query
     (setq query (or (when (use-region-p)
                       (buffer-substring (region-beginning) (region-end)))

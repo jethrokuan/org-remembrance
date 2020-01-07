@@ -86,13 +86,16 @@
             (s-lines (buffer-string))))))
 
 (defun org-remembrance-format-result (result)
-  (concat (format "* [[%s][%s]] %s"
-                  (cdr (assoc "url" result))
-                  (or (cdr (assoc "filename" result))
-                      (cdr (assoc "title" result)))
+  (concat (format "* %s %s" (org-link-make-string
+                             (cdr (assoc "url" result))
+                             (or (cdr (assoc "caption" result))
+                                 (cdr (assoc "filename" result))
+                                 (cdr (assoc "title" result))))
                   (cdr (assoc "relevancyrating" result)))
           "\n\n"
-          (s-collapse-whitespace (or (cdr (assoc "abstract" result)) "No abstract."))
+          (s-collapse-whitespace (or
+                                  (cdr (assoc "abstract" result))
+                                  "No abstract."))
           "\n"))
 
 (defun org-remembrance-split ()

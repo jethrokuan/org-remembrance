@@ -1,1 +1,14 @@
 * org-remembrance
+
+An attempt at Remembrance Agents, leveraging Org-mode and Recoll.
+[[https://blog.jethro.dev/posts/remembrance_agents/][Here's a blog post describing it in more detail.]]
+
+* General Blockers
+- There's no way to easily all text globally (X Windows, Wayland or
+  otherwise), closest we can get is through accessibility frameworks
+  - hence, the attempt was limited to Emacs and Org-mode
+- Keyword search doesn't return good results
+
+* Ways Forward
+- Incremental topic modelling on documents
+
